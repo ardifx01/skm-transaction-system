@@ -1,11 +1,6 @@
 {
-    "name": "skm-transaction-system",
-    "version": "1.0.0",
     "private": true,
     "type": "module",
-    "engines": {
-        "node": "18.x"
-    },
     "scripts": {
         "build": "vite build",
         "dev": "vite"

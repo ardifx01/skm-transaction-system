@@ -20,16 +20,14 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('users', UserController::class)->middleware('can:view-users');
     Route::resource('roles', RoleController::class)->middleware('can:view-roles');
     Route::resource('policies', PolicyController::class)->middleware('can:view-polis');
-    Route::prefix('policies')->name('policies.')->group(function () {
-        Route::resource('/', PolicyController::class)->middleware('can:view-polis');
 
-        Route::post('/{policy}/verify', [PolicyController::class, 'verify'])->name('verify');
-        Route::post('/{policy}/confirm-payment', [PolicyController::class, 'confirmPayment'])->name('confirm-payment');
-        Route::post('/policies/{policy}/send-mail', [PolicyController::class, 'sendMail'])
+    Route::post('/policies/{policy}/verify', [PolicyController::class, 'verify'])->name('policies.verify');
+    Route::post('/policies/{policy}/confirm-payment', [PolicyController::class, 'confirmPayment'])->name('policies.confirm-payment');
+    Route::post('/policies/{policy}/send-mail', [PolicyController::class, 'sendMail'])
         ->name('policies.send-mail')
         ->middleware('can:send-polis-mail');
-    });
 });
+
 
 
 
