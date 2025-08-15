@@ -17,8 +17,15 @@ Route::get('/main', function () {
 
 // user management routes
 Route::middleware(['auth'])->group(function () {
+
+    // 🔹 Route export harus di atas route resource
+Route::get('/policies/{policy}/export-excel', [PolicyController::class, 'exportExcel'])
+    ->name('policies.export-excel')
+    ->middleware('can:view-polis');
+
     Route::resource('users', UserController::class)->middleware('can:view-users');
     Route::resource('roles', RoleController::class)->middleware('can:view-roles');
+
     Route::resource('policies', PolicyController::class)->middleware('can:view-polis');
 
     Route::post('/policies/{policy}/verify', [PolicyController::class, 'verify'])->name('policies.verify');
@@ -26,7 +33,15 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/policies/{policy}/send-mail', [PolicyController::class, 'sendMail'])
         ->name('policies.send-mail')
         ->middleware('can:send-polis-mail');
+
+    Route::post('/policies/{policy}/upload-payment', [PolicyController::class, 'uploadPayment'])
+        ->name('policies.upload-payment')
+        ->middleware('can:edit-polis');
+        
 });
+
+
+
 
 
 

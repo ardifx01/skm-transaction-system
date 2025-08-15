@@ -23,9 +23,12 @@
                     </a>
 
                     <!-- Export Button -->
-                    <a href="{{ route('policies.show', $policy->id) }}" class="btn btn-success btn-sm">
-                        <i class="fas fa-file-export"></i> Export
-                    </a>
+                    @can('view-reports')
+                        <a href="{{ route('policies.export-excel', ['policy' => $policy->id]) }}"
+                            class="btn btn-success btn-sm">
+                            <i class="fas fa-file-export"></i> Export
+                        </a>
+                    @endcan
 
                     <!-- Send Mail Button -->
                     @can('send-polis-mail')
@@ -52,8 +55,6 @@
                         </button>
                     @endcan
                 </td>
-
-
             </tr>
         @endforeach
     </tbody>

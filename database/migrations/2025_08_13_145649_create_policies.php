@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             
-            // Kolom utama
+            // Kolom dari contoh tabel
             $table->string('no_blanko')->nullable()->unique();
             $table->string('no_policy')->nullable();
             $table->string('consignee')->nullable();
@@ -24,11 +24,18 @@ return new class extends Migration
             $table->decimal('insured_value', 15, 2)->nullable();
             $table->string('currency')->nullable();
 
-            // Audit fields
-            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
-            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
+            // Kolom tambahan untuk verifikasi oleh Admin
+            $table->string('certificate_no')->nullable();
+            $table->date('date_of_issue')->nullable();
+            $table->string('vessel_reg')->nullable();
+            $table->date('sailing_date')->nullable();
 
-            // Status & pembayaran
+            $table->string('from')->nullable();
+            $table->string('to')->nullable();
+            $table->string('transhipment_at')->nullable();
+            $table->string('value_at')->nullable();
+            $table->string('interest_insured')->nullable();
+
             $table->enum('status', [
                 'draft', 
                 'pending_verification', 
