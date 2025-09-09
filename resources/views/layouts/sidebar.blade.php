@@ -44,7 +44,7 @@
                 </li>
 
                 <!-- System Management -->
-                @canany(['view-users', 'view-roles'])
+                @canany(['users-view', 'roles-view'])
                     <li class="nav-header">DATA MANAGEMENT</li>
                     <li
                         class="nav-item {{ Request::routeIs('users.*') || Request::routeIs('roles.*') ? 'menu-open' : '' }}">
@@ -57,7 +57,7 @@
                             </p>
                         </a>
                         <ul class="nav nav-treeview">
-                            @can('view-users')
+                            @can('users-view')
                                 <li class="nav-item">
                                     <a href="{{ route('users.index') }}"
                                         class="nav-link {{ Request::routeIs('users.*') ? 'active' : '' }}">
@@ -66,7 +66,7 @@
                                     </a>
                                 </li>
                             @endcan
-                            @can('view-roles')
+                            @can('roles-view')
                                 <li class="nav-item">
                                     <a href="{{ route('roles.index') }}"
                                         class="nav-link {{ Request::routeIs('roles.*') ? 'active' : '' }}">
@@ -80,9 +80,10 @@
                 @endcanany
 
                 <!-- Policy Management -->
-                @canany(['create-polis', 'view-polis'])
+                <!-- Policy Management -->
+                @canany(['policies-create', 'policies-view'])
                     <li class="nav-header">POLICY MANAGEMENT</li>
-                    @can('create-polis')
+                    @can('policies-create')
                         <li class="nav-item">
                             <a href="{{ route('policies.create') }}"
                                 class="nav-link {{ Request::routeIs('policies.create') ? 'active' : '' }}">
@@ -91,7 +92,7 @@
                             </a>
                         </li>
                     @endcan
-                    @can('view-polis')
+                    @can('policies-view')
                         <li class="nav-item">
                             <a href="{{ route('policies.index') }}"
                                 class="nav-link {{ Request::routeIs('policies.index') ? 'active' : '' }}">
@@ -103,7 +104,7 @@
                 @endcanany
 
                 <!-- Reports -->
-                @can('view-reports')
+                @can('reports-view')
                     <li class="nav-header">REPORTS</li>
                     <li class="nav-item">
                         <a href="#" class="nav-link {{ Request::routeIs('reports.*') ? 'active' : '' }}">

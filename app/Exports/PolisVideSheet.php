@@ -24,6 +24,6 @@ class PolisVideSheet implements FromView, WithTitle
 
     public function title(): string
     {
-        return 'Polis VIDE';
+        return 'Polis Videi';
     }
 }

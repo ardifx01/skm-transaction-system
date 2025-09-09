@@ -24,6 +24,6 @@ class KwitansiSheet implements FromView, WithTitle
 
     public function title(): string
     {
-        return 'Kwitansi';
+        return 'KWITANSI';
     }
 }

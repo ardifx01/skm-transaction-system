@@ -27,7 +27,7 @@
                         <!-- Permissions per Modul -->
                         @php
                             $groupedPermissions = $permissions->groupBy(function ($perm) {
-                                return explode('-', $perm->name)[1] ?? 'General';
+                                return explode('-', $perm->name)[0] ?? 'General';
                             });
                             $modules = $groupedPermissions->keys();
                         @endphp

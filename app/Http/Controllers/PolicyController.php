@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Validator;
 use Spatie\Permission\Models\Role;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\MultiSheetReportExport;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class PolicyController extends Controller
 {
@@ -100,14 +101,24 @@ class PolicyController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(Policy $policy)
-    {
-        // Hanya pemilik polis dengan status 'draft' yang bisa mengedit
-        if (Auth::user()->id !== $policy->user_id || $policy->status !== 'draft') {
-            return abort(403);
-        }
+public function edit(Policy $policy)
+{
+    $user = Auth::user();
+
+    // 🔹 Admin bisa edit semua polis
+    if ($user->hasRole('admin')) {
         return view('policies.form', compact('policy'));
     }
+
+    // 🔹 User biasa hanya bisa edit miliknya sendiri dan status tertentu
+    if ($user->id === $policy->user_id && $policy->status === 'pending_verification') {
+        return view('policies.form', compact('policy'));
+    }
+
+    // 🔹 Selain itu, forbidden
+    abort(403, 'You are not authorized to edit this policy.');
+}
+
     
     /**
      * Update the specified resource in storage.
@@ -160,7 +171,7 @@ class PolicyController extends Controller
     public function verify(Request $request, Policy $policy)
     {
         // Hanya admin yang bisa memverifikasi
-        $this->authorize('edit-policies');
+        $this->authorize('policies-edit');
 
         $validator = Validator::make($request->all(), [
             'status' => 'required|in:verified,rejected',
@@ -203,7 +214,7 @@ class PolicyController extends Controller
     public function confirmPayment(Policy $policy)
     {
         // Hanya admin yang bisa mengkonfirmasi pembayaran
-        $this->authorize('confirm-payment');
+        $this->authorize('policies-approve-payment');
 
         $policy->update([
             'status' => 'paid',
@@ -219,7 +230,7 @@ class PolicyController extends Controller
     public function uploadPayment(Request $request, Policy $policy)
     {
         // Hanya pemilik polis yang bisa mengunggah bukti bayar
-        $this->authorize('upload-payment-proof', $policy);
+        $this->authorize('policies-upload-payment', $policy);
 
         $validator = Validator::make($request->all(), [
             'payment_proof' => 'required|file|mimes:jpeg,png,pdf|max:2048', // Maks 2MB
@@ -242,75 +253,227 @@ class PolicyController extends Controller
         return response()->json(['success' => 'Payment proof uploaded successfully!']);
     }
 
-public function exportExcel(Request $request)
+        //  public function exportExcel(Policy $policy)
+        // {
+        //     // Eager load relasi 'details' dan 'user' di awal
+        //     $policy->load('details', 'user');
+
+        //     // --- Data for the "Polis VIDE" sheet ---
+        //     $polisVideData = [
+        //         'certificate_no' => $policy->certificate_no ?? '-',
+        //         'date_of_issue' => $policy->date_of_issue ?? '-',
+        //         'the_assured' => $policy->assured_name ?? '-',
+        //         'consignee' => $policy->consignee ?? '-',
+        //         'consignee_address' => $policy->consignee_address ?? '-',
+        //         'transhipment_at' => $policy->transhipment_at ?? '-',
+        //         'from' => $policy->from ?? '-',
+        //         'to' => $policy->to ?? '-',
+        //         'shipping_carrier' => $policy->shipping_carrier ?? '-',
+        //         'vessel_reg' => $policy->vessel_reg ?? '-',
+        //         'sailing_date' => $policy->sailing_date ?? '-',
+        //         'currency' => $policy->currency ?? '-',
+        //         'insured_value' => $policy->insured_value ?? 0,
+        //         'interest_insured' => $policy->interest_insured ?? '-',
+        //     ];
+
+        //     // --- Data for the "Daftar Laporan VIDE" sheet ---
+        //     $laporanVideCollection = $policy->details ?? collect();
+        //     $laporanVideData = $laporanVideCollection->map(function ($detail) {
+        //         return [
+        //             'no_blanko' => $detail->no_blanko ?? '-',
+        //             'no_polis' => $detail->no_policy ?? '-',
+        //             'consignee' => $detail->consignee ?? '-',
+        //             'no_bl' => $detail->no_bl ?? '-',
+        //             'alat_pengangkut' => $detail->shipping_carrier ?? '-',
+        //             'nilai_pertanggungan' => $detail->insured_value ?? 0,
+        //         ];
+        //     });
+
+        //     // Data header untuk Laporan VIDEI (sesuai permintaan user)
+        //     $laporanVideReportData = [
+        //         'tgl_ambil' => now()->format('d M Y'),
+        //         'no_registrasi' => 'MC ' . ($policy->no_blanko ?? '-') . ' - MC ' . ($policy->no_policy ?? '-'),
+        //     ];
+
+        //     // --- Data for the "Kwitansi" sheet ---
+        //     $policy->load('user');
+        //     $kwitansiData = [
+        //         'user_name' => $policy->user->name ?? '-',
+        //         'premium_price_in_words' => $policy->premium_price_in_words ?? '-',
+        //         'no_policy' => $policy->no_policy ?? '-',
+        //         'premium_price' => $policy->premium_price ?? 0,
+        //     ];
+
+        //     // Gabungkan semua
+        //     $allData = [
+        //         'polis_videi' => $polisVideData,
+        //         'laporan_videi_data' => $laporanVideData,
+        //         'laporan_videi_report_data' => $laporanVideReportData,
+        //         'kwitansi' => $kwitansiData,
+        //     ];
+
+        //     $filename = 'policy_report_' . $policy->id . '.xlsx';
+        //     return Excel::download(new MultiSheetReportExport($allData), $filename);
+        // }
+
+        public function exportExcel(Policy $policy)
+{
+    // Eager load relasi 'user'
+    $policy->load('user');
+
+    // --- Data untuk sheet "Polis VIDE" ---
+    $polisVideData = [
+        'certificate_no'   => $policy->certificate_no ?? '-',
+        'date_of_issue'    => $policy->date_of_issue ?? '-',
+        'the_assured'      => $policy->consignee ?? '-',
+        'consignee'        => $policy->consignee ?? '-',
+        'consignee_address'=> '-',
+        'transhipment_at'  => $policy->transhipment_at ?? '-',
+        'from'             => $policy->from ?? '-',
+        'to'               => $policy->to ?? '-',
+        'shipping_carrier' => $policy->shipping_carrier ?? '-',
+        'vessel_reg'       => $policy->vessel_reg ?? '-',
+        'sailing_date'     => $policy->sailing_date ?? '-',
+        'currency'         => $policy->currency ?? '-',
+        'insured_value'    => $policy->insured_value ?? 0,
+        'interest_insured' => $policy->interest_insured ?? '-',
+    ];
+
+    // --- Data untuk sheet "Daftar Laporan VIDE" ---
+    $laporanVideCollection = collect([$policy]);
+    $laporanVideData = $laporanVideCollection->map(function ($detail) {
+        return [
+            'no_blanko'          => $detail->no_blanko ?? '-',
+            'no_polis'           => $detail->no_policy ?? '-',
+            'consignee'          => $detail->consignee ?? '-',
+            'no_bl'              => $detail->no_bl ?? '-',
+            'alat_pengangkut'    => $detail->shipping_carrier ?? '-',
+            'nilai_pertanggungan'=> $detail->insured_value ?? 0,
+        ];
+    });
+
+    // --- Data header untuk "Laporan VIDE" ---
+    $laporanVideReportData = [
+        'tgl_ambil'     => now()->format('d M Y'),
+        'no_registrasi' => 'MC ' . ($policy->no_blanko ?? '-') . ' - MC ' . ($policy->no_policy ?? '-'),
+    ];
+
+    // --- Data untuk sheet "Kwitansi" ---
+    $premium = $policy->premium_price ?? 0;
+    $kwitansiData = [
+        'user_name'              => $policy->user->name ?? '-',
+        'premium_price_in_words' => $premium > 0 ? strtoupper($this->terbilang($premium)) . " RUPIAH" : '-',
+        'no_policy'              => $policy->no_policy ?? '-',
+        'premium_price'          => $premium,
+    ];
+
+    // Gabungkan semua data
+    $allData = [
+        'polis_videi'              => $polisVideData,
+        'laporan_videi_data'       => $laporanVideData,
+        'laporan_videi_report_data'=> $laporanVideReportData,
+        'kwitansi'                 => $kwitansiData,
+    ];
+
+    $filename = 'policy_report_' . $policy->id . '.xlsx';
+    return Excel::download(new MultiSheetReportExport($allData), $filename);
+}
+
+/**
+ * Convert angka ke tulisan terbilang (Bahasa Indonesia)
+ */
+private function terbilang($number)
+{
+    $number = abs($number);
+    $words = ["", "SATU", "DUA", "TIGA", "EMPAT", "LIMA", "ENAM", "TUJUH", "DELAPAN", "SEMBILAN", "SEPULUH", "SEBELAS"];
+    $temp = "";
+
+    if ($number < 12) {
+        $temp = " " . $words[$number];
+    } else if ($number < 20) {
+        $temp = $this->terbilang($number - 10) . " BELAS";
+    } else if ($number < 100) {
+        $temp = $this->terbilang(intval($number / 10)) . " PULUH" . $this->terbilang($number % 10);
+    } else if ($number < 200) {
+        $temp = " SERATUS" . $this->terbilang($number - 100);
+    } else if ($number < 1000) {
+        $temp = $this->terbilang(intval($number / 100)) . " RATUS" . $this->terbilang($number % 100);
+    } else if ($number < 2000) {
+        $temp = " SERIBU" . $this->terbilang($number - 1000);
+    } else if ($number < 1000000) {
+        $temp = $this->terbilang(intval($number / 1000)) . " RIBU" . $this->terbilang($number % 1000);
+    } else if ($number < 1000000000) {
+        $temp = $this->terbilang(intval($number / 1000000)) . " JUTA" . $this->terbilang($number % 1000000);
+    } else if ($number < 1000000000000) {
+        $temp = $this->terbilang(intval($number / 1000000000)) . " MILYAR" . $this->terbilang($number % 1000000000);
+    } else {
+        $temp = "TERLALU BESAR";
+    }
+
+    return trim($temp);
+}
+
+
+ public function exportPdf(Policy $policy)
     {
-        $policyId = $request->query('policy');
+        // Eager load relasi user
+        $policy->load('user');
 
-        // Cek apakah ID ada
-        if (!$policyId) {
-            return redirect()->back()->with('error', 'Policy ID is missing.');
-        }
-        
-        // Cari model Policy berdasarkan ID
-        $policy = Policy::find($policyId);
-        
-        // Cek apakah model Policy ditemukan
-        if (!$policy) {
-            return redirect()->back()->with('error', 'Policy not found.');
-        }
-
-        // --- Data for the "Polis VIDE" sheet ---
-        // You need to ensure every key here exists in your Policy model
+        // --- Data untuk halaman Polis VIDEI ---
         $polisVideData = [
-            'certificate_no' => $policy->certificate_no ?? '-',
-            'date_of_issue' => $policy->date_of_issue ?? '-',
-            'the_assured' => $policy->assured_name ?? '-',
-            'consignee' => $policy->consignee ?? '-',
-            'consignee_address' => $policy->consignee_address ?? '-',
-            'transhipment_at' => $policy->transhipment_at ?? '-',
-            'from' => $policy->from ?? '-',
-            'to' => $policy->to ?? '-',
+            'certificate_no'   => $policy->certificate_no ?? '-',
+            'date_of_issue'    => $policy->date_of_issue ?? '-',
+            'the_assured'      => $policy->consignee ?? '-',
+            'consignee'        => $policy->consignee ?? '-',
+            'transhipment_at'  => $policy->transhipment_at ?? '-',
+            'from'             => $policy->from ?? '-',
+            'to'               => $policy->to ?? '-',
             'shipping_carrier' => $policy->shipping_carrier ?? '-',
-            'vessel_reg' => $policy->vessel_reg ?? '-',
-            'sailing_date' => $policy->sailing_date ?? '-',
-            'currency' => $policy->currency ?? '-',
-            'insured_value' => $policy->insured_value ?? 0,
+            'vessel_reg'       => $policy->vessel_reg ?? '-',
+            'sailing_date'     => $policy->sailing_date ?? '-',
+            'currency'         => $policy->currency ?? '-',
+            'insured_value'    => $policy->insured_value ?? 0,
             'interest_insured' => $policy->interest_insured ?? '-',
         ];
 
-        // --- Data for the "Daftar Laporan VIDE" sheet ---
-        // Asumsi ada relasi `details` di model Policy yang mengembalikan Collection
-        $laporanVideCollection = $policy->details ?? collect();
-        
+        // --- Data untuk halaman Laporan VIDEI ---
+        $laporanVideCollection = collect([$policy]);
         $laporanVideData = $laporanVideCollection->map(function ($detail) {
             return [
-                $detail->no_blanko ?? '-',
-                $detail->no_polis ?? '-',
-                $detail->consignee_name ?? '-',
-                $detail->no_bl ?? '-',
-                $detail->alat_pengangkut ?? '-',
-                $detail->nilai_penanggungan ?? 0,
+                'no_blanko'          => $detail->no_blanko ?? '-',
+                'no_polis'           => $detail->no_policy ?? '-',
+                'consignee'          => $detail->consignee ?? '-',
+                'no_bl'              => $detail->no_bl ?? '-',
+                'alat_pengangkut'    => $detail->shipping_carrier ?? '-',
+                'nilai_pertanggungan'=> $detail->insured_value ?? 0,
             ];
         });
 
-        // --- Data for the "Kwitansi" sheet ---
-        // Make sure the `user` relationship is loaded.
-        $policy->load('user');
+        $laporanVideReportData = [
+            'tgl_ambil'     => now()->format('d M Y'),
+            'no_registrasi' => 'MC ' . ($policy->no_blanko ?? '-') . ' - MC ' . ($policy->no_policy ?? '-'),
+        ];
+
+        // --- Data untuk halaman Invoice/Kwitansi ---
+        $premium = $policy->premium_price ?? 0;
         $kwitansiData = [
-            'user_name' => $policy->user->name ?? '-',
-            'premium_price_in_words' => $policy->premium_price_in_words ?? '-',
-            'no_policy' => $policy->no_policy ?? '-',
-            'premium_price' => $policy->premium_price ?? 0,
+            'user_name'              => $policy->user->name ?? '-',
+            'premium_price_in_words' => $premium > 0 ? strtoupper($this->terbilang($premium)) . " RUPIAH" : '-',
+            'no_policy'              => $policy->no_policy ?? '-',
+            'premium_price'          => $premium,
         ];
 
-        // The data passed to MultiSheetReportExport
-        $allData = [
-            'polis_vide' => $polisVideData,
-            'laporan_vide' => $laporanVideData,
-            'kwitansi' => $kwitansiData,
-        ];
+        // Render HTML 3 halaman
+        $html = view('pdf.pdf_master_view', compact(
+            'polisVideData',
+            'laporanVideData',
+            'laporanVideReportData',
+            'kwitansiData'
+        ))->render();
+        // Generate PDF
+        $pdf = Pdf::loadHTML($html)->setPaper('A4', 'portrait');
 
-        $filename = 'policy_report_' . $policy->id . '.xlsx';
-        return Excel::download(new MultiSheetReportExport($allData), $filename);
+        return $pdf->download('policy_' . $policy->id . '.pdf');
     }
+
 }

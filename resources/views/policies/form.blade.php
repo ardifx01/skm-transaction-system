@@ -54,28 +54,33 @@
                                     </div>
                                 </div>
 
+
                                 {{-- Checkbox untuk Mata Uang --}}
                                 <div class="form-group row">
                                     <label class="col-sm-2 col-form-label">Currency</label>
                                     <div class="col-sm-10">
                                         <div class="form-check">
                                             <input class="form-check-input" type="radio" name="currency" value="IDR"
-                                                id="currency-idr">
+                                                id="currency-idr"
+                                                {{ ($policy['currency'] ?? '') == 'IDR' ? 'checked' : '' }}>
                                             <label class="form-check-label" for="currency-idr">IDR</label>
                                         </div>
                                         <div class="form-check">
                                             <input class="form-check-input" type="radio" name="currency" value="JPY"
-                                                id="currency-jpy">
+                                                id="currency-jpy"
+                                                {{ ($policy['currency'] ?? '') == 'JPY' ? 'checked' : '' }}>
                                             <label class="form-check-label" for="currency-jpy">JPY</label>
                                         </div>
                                         <div class="form-check">
                                             <input class="form-check-input" type="radio" name="currency" value="USD"
-                                                id="currency-usd">
+                                                id="currency-usd"
+                                                {{ ($policy['currency'] ?? '') == 'USD' ? 'checked' : '' }}>
                                             <label class="form-check-label" for="currency-usd">USD</label>
                                         </div>
                                         <div class="form-check">
                                             <input class="form-check-input" type="radio" name="currency" value="SGD"
-                                                id="currency-sgd">
+                                                id="currency-sgd"
+                                                {{ ($policy['currency'] ?? '') == 'SGD' ? 'checked' : '' }}>
                                             <label class="form-check-label" for="currency-sgd">SGD</label>
                                         </div>
                                     </div>

@@ -15,9 +15,13 @@
                 <td>{{ $role->name }}</td>
                 <td>{{ $role->guard_name ?? '-' }}</td>
                 <td>
-                    <a href="{{ route('roles.edit', $role->id) }}" class="btn btn-warning btn-sm">Edit</a>
-                    <button type="button" class="btn btn-danger btn-sm"
-                        onclick="deleteRole({{ $role->id }})">Delete</button>
+                    @can('roles-edit')
+                        <a href="{{ route('roles.edit', $role->id) }}" class="btn btn-warning btn-sm">Edit</a>
+                    @endcan
+                    @can('roles-delete')
+                        <button type="button" class="btn btn-danger btn-sm"
+                            onclick="deleteRole({{ $role->id }})">Delete</button>
+                    @endcan
                 </td>
             </tr>
         @endforeach

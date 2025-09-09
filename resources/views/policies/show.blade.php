@@ -124,7 +124,7 @@
                             <a href="{{ route('policies.index') }}" class="btn btn-default">Back to List</a>
 
                             <div>
-                                @can('edit-policies')
+                                @can('policies-edit')
                                     @if ($policy->status === 'pending_verification')
                                         <button id="btn-verify" class="btn btn-success" data-toggle="modal"
                                             data-target="#verificationModal" data-id="{{ $policy->id }}">Verify
@@ -134,14 +134,24 @@
                                     @endif
                                 @endcan
 
-                                @can('view-payments')
-                                    @if ($policy->payment_proof)
-                                        <a href="{{ asset('storage/' . $policy->payment_proof) }}" target="_blank"
-                                            class="btn btn-info">View Payment Proof</a>
-                                    @endif
-                                @endcan
+                                @if ((Auth::user()->hasRole('customer') && $policy->status === 'pending_payment') || $policy->status === 'paid')
+                                    @can('policies-view-payment')
+                                        @if ($policy->payment_proof)
+                                            <a href="{{ asset('storage/public/' . $policy->payment_proof) }}"
+                                                class="btn btn-info view-payment-proof">View Payment Proof</a>
+                                        @endif
+                                    @endcan
+                                @endif
+                                @if (Auth::user()->hasRole('admin'))
+                                    @can('policies-view-payment')
+                                        @if ($policy->payment_proof)
+                                            <a href="{{ asset('storage/public/' . $policy->payment_proof) }}"
+                                                class="btn btn-info view-payment-proof">View Payment Proof</a>
+                                        @endif
+                                    @endcan
+                                @endif
 
-                                @can('confirm-payment')
+                                @can('policies-approve-payment')
                                     @if ($policy->status === 'pending_payment')
                                         <button id="btn-confirm-payment" class="btn btn-primary" data-id="{{ $policy->id }}">
                                             Confirm Payment ({{ number_format($policy->premium_price, 2) }})
@@ -154,32 +164,35 @@
                     <!-- End Policy Detail Card -->
 
                     {{-- Card for Payment Upload (Customer) --}}
-                    @if (Auth::user()->hasRole('customer') && $policy->status === 'verified')
-                        <div class="card card-info mt-3">
-                            <div class="card-header">
-                                <h3 class="card-title">Upload Payment Proof</h3>
-                            </div>
-                            <form id="paymentForm" action="{{ route('policies.upload-payment', $policy->id) }}"
-                                method="POST" enctype="multipart/form-data">
-                                @csrf
-                                <div class="card-body">
-                                    <div class="form-group">
-                                        <label for="payment_proof">File Bukti Bayar (Image/PDF)</label>
-                                        <div class="input-group">
-                                            <div class="custom-file">
-                                                <input type="file" class="custom-file-input" id="payment_proof"
-                                                    name="payment_proof" required>
-                                                <label class="custom-file-label" for="payment_proof">Choose file</label>
+                    {{-- @if (Auth::user()->hasRole('customer') && $policy->status === 'verified') --}}
+                    @can('policies-upload-payment')
+                        @if (Auth::user()->hasRole('customer') && $policy->status === 'verified')
+                            <div class="card card-info mt-3">
+                                <div class="card-header">
+                                    <h3 class="card-title">Upload Payment Proof</h3>
+                                </div>
+                                <form id="paymentForm" action="{{ route('policies.upload-payment', $policy->id) }}"
+                                    method="POST" enctype="multipart/form-data">
+                                    @csrf
+                                    <div class="card-body">
+                                        <div class="form-group">
+                                            <label for="payment_proof">File Bukti Bayar (Image/PDF)</label>
+                                            <div class="input-group">
+                                                <div class="custom-file">
+                                                    <input type="file" class="custom-file-input" id="payment_proof"
+                                                        name="payment_proof" required>
+                                                    <label class="custom-file-label" for="payment_proof">Choose file</label>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div class="card-footer">
-                                    <button type="submit" class="btn btn-info">Upload & Submit</button>
-                                </div>
-                            </form>
-                        </div>
-                    @endif
+                                    <div class="card-footer">
+                                        <button type="submit" class="btn btn-info">Upload & Submit</button>
+                                    </div>
+                                </form>
+                            </div>
+                        @endif
+                    @endcan
                 </div>
             </div>
         </div>
@@ -536,6 +549,42 @@
             $('#verificationModal').on('show.bs.modal', function() {
                 $('.currency-input').each(function() {
                     formatNumberInput($(this));
+                });
+            });
+
+            // Skrip untuk menampilkan Payment Proof dalam popup
+            $(document).on('click', '.view-payment-proof', function(e) {
+                e.preventDefault();
+                const fileUrl = $(this).attr('href');
+
+                let contentHtml = '';
+                const fileExtension = fileUrl.split('.').pop().toLowerCase();
+
+                if (['jpg', 'jpeg', 'png', 'gif'].includes(fileExtension)) {
+                    // Jika file adalah gambar, tampilkan di tag img
+                    contentHtml = `<img src="${fileUrl}" style="max-width: 100%; height: auto;">`;
+                } else if (fileExtension === 'pdf') {
+                    // Jika file adalah PDF, gunakan iframe untuk embed
+                    contentHtml = `
+            <div style="width: 100%; height: 70vh;">
+                <iframe src="${fileUrl}" style="width:100%; height:100%;" frameborder="0"></iframe>
+            </div>
+        `;
+                } else {
+                    // Fallback untuk tipe file lain
+                    contentHtml =
+                        `<p>Cannot preview this file type. <a href="${fileUrl}" target="_blank">Click here to download.</a></p>`;
+                }
+
+                Swal.fire({
+                    title: 'Payment Proof',
+                    html: contentHtml,
+                    width: '80%',
+                    showConfirmButton: false,
+                    showCloseButton: true,
+                    customClass: {
+                        container: 'swal2-container-fullscreen'
+                    },
                 });
             });
         });

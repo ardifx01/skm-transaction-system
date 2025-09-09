@@ -11,7 +11,9 @@
                         <div class="card-header">
                             <h3 class="card-title">Role List</h3>
                             <div class="card-tools">
-                                <a href="{{ route('roles.create') }}" class="btn btn-primary btn-sm">Add Role</a>
+                                @can('roles-create')
+                                    <a href="{{ route('roles.create') }}" class="btn btn-primary btn-sm">Add Role</a>
+                                @endcan
                             </div>
                         </div>
                         <div class="card-body">

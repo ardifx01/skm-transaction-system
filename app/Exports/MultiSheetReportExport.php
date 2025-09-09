@@ -18,8 +18,8 @@ class MultiSheetReportExport implements WithMultipleSheets
     public function sheets(): array
     {
         $sheets = [
-            new PolisVideSheet($this->data['polis_vide']),
-            new LaporanVideSheet($this->data['laporan_vide']),
+            new PolisVideSheet($this->data['polis_videi']),
+            new LaporanVideSheet($this->data['laporan_videi_data'], $this->data['laporan_videi_report_data']),
             new KwitansiSheet($this->data['kwitansi']),
         ];
 

@@ -14,9 +14,13 @@
                 <td>{{ $user->name }}</td>
                 <td>{{ $user->email }}</td>
                 <td>
-                    <a href="{{ route('users.edit', $user->id) }}" class="btn btn-warning btn-sm">Edit</a>
-                    <button type="button" class="btn btn-danger btn-sm"
-                        onclick="deleteUser({{ $user->id }})">Delete</button>
+                    @can('users-edit')
+                        <a href="{{ route('users.edit', $user->id) }}" class="btn btn-warning btn-sm">Edit</a>
+                    @endcan
+                    @can('users-delete')
+                        <button type="button" class="btn btn-danger btn-sm"
+                            onclick="deleteUser({{ $user->id }})">Delete</button>
+                    @endcan
                 </td>
             </tr>
         @endforeach
